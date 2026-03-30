@@ -19,10 +19,10 @@
     loading = true;
     error = '';
     try {
-      if (!$auth.user?.id) return;
+      if (!$auth.user?.student_id) return;
       
       const allSessions = await sessionsApi.list();
-      const pastSessions = allSessions.filter(s => s.status !== 'scheduled');
+      const pastSessions = allSessions.filter(s => s.status !== 'planned');
       
       const historyData: SessionWithAttendance[] = [];
       
@@ -31,15 +31,15 @@
       await Promise.all(pastSessions.map(async (session) => {
         try {
           const attendances = await attendanceApi.list(session.id);
-          const studentAtt = attendances.find(a => a.student_id === $auth.user?.id) || null;
+          const studentAtt = attendances.find(a => a.student_id === $auth.user?.student_id) || null;
           historyData.push({ session, attendance: studentAtt });
         } catch {
           // ignore error for a single session
         }
       }));
       
-      // Sort by scheduled_at desc
-      historyData.sort((a, b) => new Date(b.session.scheduled_at).getTime() - new Date(a.session.scheduled_at).getTime());
+      // Sort by scheduled_start desc
+      historyData.sort((a, b) => new Date(b.session.scheduled_start).getTime() - new Date(a.session.scheduled_start).getTime());
       history = historyData;
 
     } catch (err: any) {
@@ -93,7 +93,7 @@
         <tbody>
           {#each history as item}
             <tr>
-              <td class="code">{formatDate(item.session.scheduled_at)}</td>
+              <td class="code">{formatDate(item.session.scheduled_start)}</td>
               <td class="font-medium">{item.session.assignment_title || `Práctica ${item.session.assignment_id}`}</td>
               <td class="text-muted">
                 {item.attendance?.check_in_at ? formatDate(item.attendance.check_in_at) : '--'}

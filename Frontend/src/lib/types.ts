@@ -11,11 +11,12 @@ export interface User {
 }
 
 export interface AuthSession {
-  id: number;
+  user_id: number;
   username: string;
   full_name: string;
   role: 'admin' | 'teacher' | 'operator' | 'student';
   student_id?: number;
+  group_name?: string;
 }
 
 export interface Student {
@@ -68,11 +69,12 @@ export interface Assignment {
   id: number;
   title: string;
   description: string;
+  instructions: string;
+  teacher_id: number;
+  teacher_name?: string;
   group_name: string;
   semester: number;
   status: AssignmentStatus;
-  created_by: number;
-  created_by_name?: string;
   published_at?: string;
   created_at: string;
 }

@@ -15,11 +15,21 @@
     loading = true;
     error = '';
     try {
-      // The backend should return the current open session for the student's group
-      // For now, we fetch all sessions and find the first open one for simplicity, 
-      // but ideally the backend has a /sessions/active endpoint
       const allSessions = await sessionsApi.list();
       activeSession = allSessions.find(s => s.status === 'open') || null;
+
+      // Si hay sesión activa, ver si ya pasamos lista
+      if (activeSession && $auth.user?.student_id) {
+        try {
+          const attendances = await attendanceApi.list(activeSession.id);
+          const alreadyCheckedIn = attendances.some(a => a.student_id === $auth.user?.student_id);
+          if (alreadyCheckedIn) {
+            checkInSuccess = true;
+          }
+        } catch (attErr) {
+          console.warn('Error verificando asistencia previa:', attErr);
+        }
+      }
     } catch (err: any) {
       error = err.message || 'Error al verificar sesión activa';
     } finally {
@@ -32,15 +42,27 @@
   });
 
   async function handleCheckIn() {
-    if (!activeSession || !$auth.user?.id) return;
+    console.log('Intentando pasar lista...', { session: activeSession, user: $auth.user });
+    
+    if (!activeSession) {
+      error = 'No hay una sesión activa.';
+      return;
+    }
+    
+    if (!$auth.user?.student_id) {
+      error = 'Error de identificación: No se encontró tu ID de alumno.';
+      return;
+    }
     
     checkInLoading = true;
     error = '';
     try {
-      // Usually the backend derives student_id from auth token, but if needed we send it
-      await attendanceApi.checkIn(activeSession.id, { student_id: $auth.user.id });
+      await attendanceApi.checkIn(activeSession.id, { 
+        student_id: $auth.user.student_id 
+      });
       checkInSuccess = true;
     } catch (err: any) {
+      console.error('Error en check-in:', err);
       error = err.message || 'Error al registrar asistencia';
     } finally {
       checkInLoading = false;
@@ -72,7 +94,7 @@
         <div>
           <span class="badge badge-success mb-2">En Curso</span>
           <h2 class="session-title">{activeSession.assignment_title || `Práctica ${activeSession.assignment_id}`}</h2>
-          <p class="session-meta">Profesor: {activeSession.created_by_name || 'Desconocido'}</p>
+          <p class="session-meta">Profesor: {activeSession.teacher_name || 'Desconocido'}</p>
         </div>
         <div class="check-in-container">
           {#if checkInSuccess}

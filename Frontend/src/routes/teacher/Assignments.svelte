@@ -140,10 +140,15 @@
                 </span>
               </td>
               <td class="actions">
-                {#if assignment.status === 'draft'}
-                  <button class="btn-icon" on:click={() => openEditModal(assignment)} title="Editar">
+                <button class="btn-icon" on:click={() => openEditModal(assignment)} title={assignment.status === 'draft' ? 'Editar' : 'Ver Detalles'}>
+                  {#if assignment.status === 'draft'}
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                  </button>
+                  {:else}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                  {/if}
+                </button>
+
+                {#if assignment.status === 'draft'}
                   <button class="btn-icon text-success" on:click={() => confirmStatusChange(assignment, 'publish')} title="Publicar">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                   </button>
@@ -151,8 +156,8 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                   </button>
                 {:else if assignment.status === 'published'}
-                  <button class="btn-icon text-error" on:click={() => confirmStatusChange(assignment, 'close')} title="Cerrar Práctica">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                  <button class="btn-icon text-error" on:click={() => confirmStatusChange(assignment, 'close')} title="Finalizar/Cerrar Práctica">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg>
                   </button>
                 {/if}
               </td>
@@ -169,28 +174,32 @@
     <div class="form-grid">
       <div class="form-group full-width">
         <label for="title">Título de la Práctica *</label>
-        <input class="input" id="title" bind:value={formData.title} required />
+        <input class="input" id="title" bind:value={formData.title} required disabled={isEditing && formData.status !== 'draft'} />
       </div>
       <div class="form-group full-width">
         <label for="description">Descripción</label>
-        <textarea class="input" id="description" bind:value={formData.description} rows="3"></textarea>
+        <textarea class="input" id="description" bind:value={formData.description} rows="3" disabled={isEditing && formData.status !== 'draft'}></textarea>
       </div>
       <div class="form-group full-width">
         <label for="instructions">Instrucciones</label>
-        <textarea class="input" id="instructions" bind:value={formData.instructions} rows="4" placeholder="Pasos a seguir en el laboratorio..."></textarea>
+        <textarea class="input" id="instructions" bind:value={formData.instructions} rows="4" placeholder="Pasos a seguir en el laboratorio..." disabled={isEditing && formData.status !== 'draft'}></textarea>
       </div>
       <div class="form-group">
         <label for="group_name">Grupo *</label>
-        <input class="input" id="group_name" bind:value={formData.group_name} required placeholder="Ej. 3TV4" />
+        <input class="input" id="group_name" bind:value={formData.group_name} required placeholder="Ej. 3TV4" disabled={isEditing && formData.status !== 'draft'} />
       </div>
     </div>
   </form>
 
   <div slot="footer">
-    <button class="btn btn-secondary" on:click={() => isModalOpen = false}>Cancelar</button>
-    <button class="btn btn-primary" type="submit" form="assignment-form">
-      {isEditing ? 'Actualizar' : 'Guardar Borrador'}
+    <button class="btn btn-secondary" on:click={() => isModalOpen = false}>
+      {isEditing && formData.status !== 'draft' ? 'Cerrar' : 'Cancelar'}
     </button>
+    {#if !isEditing || formData.status === 'draft'}
+      <button class="btn btn-primary" type="submit" form="assignment-form">
+        {isEditing ? 'Actualizar' : 'Guardar Borrador'}
+      </button>
+    {/if}
   </div>
 </Modal>
 

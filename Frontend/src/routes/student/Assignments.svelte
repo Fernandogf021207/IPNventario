@@ -2,22 +2,30 @@
   import { onMount } from 'svelte';
   import { assignmentsApi } from '../../lib/api';
   import type { Assignment } from '../../lib/types';
+  import Modal from '../../lib/components/Modal.svelte';
 
   let assignments: Assignment[] = [];
   let loading = true;
   let error = '';
+  
+  let selectedAssignment: Assignment | null = null;
+  let isModalOpen = false;
 
   async function loadAssignments() {
     loading = true;
     error = '';
     try {
-      // API call to list returns published assignments relevant for the student's group automatically handled in the backend
       assignments = await assignmentsApi.list();
     } catch (err: any) {
       error = err.message || 'Error al cargar prácticas';
     } finally {
       loading = false;
     }
+  }
+
+  function openDetails(assignment: Assignment) {
+    selectedAssignment = assignment;
+    isModalOpen = true;
   }
 
   onMount(() => {
@@ -61,14 +69,43 @@
             </span>
           </div>
           <div class="practice-actions">
-            <!-- For later: view manual, view details, etc. -->
-            <button class="btn btn-secondary w-full" disabled>Ver Detalles</button>
+            <button class="btn btn-secondary w-full" on:click={() => openDetails(assignment)}>Ver Detalles</button>
           </div>
         </div>
       {/each}
     {/if}
   </div>
 </div>
+
+<Modal bind:open={isModalOpen} title={selectedAssignment?.title || 'Detalles de la Práctica'}>
+  {#if selectedAssignment}
+    <div class="details-view">
+      <div class="details-section">
+        <h4>Descripción</h4>
+        <p>{selectedAssignment.description || 'Sin descripción.'}</p>
+      </div>
+
+      <div class="details-section">
+        <h4>Instrucciones de Laboratorio</h4>
+        <div class="instructions-box">
+          {selectedAssignment.instructions || 'Tu profesor no ha proporcionado instrucciones específicas.'}
+        </div>
+      </div>
+
+      <div class="details-grid">
+        <div class="detail-item">
+          <strong>Grupo:</strong> {selectedAssignment.group_name}
+        </div>
+        <div class="detail-item">
+          <strong>Publicada el:</strong> {new Date(selectedAssignment.published_at || selectedAssignment.created_at).toLocaleString('es-MX')}
+        </div>
+      </div>
+    </div>
+  {/if}
+  <div slot="footer">
+    <button class="btn btn-primary" on:click={() => isModalOpen = false}>Cerrar</button>
+  </div>
+</Modal>
 
 <style>
   .page-container {
@@ -174,5 +211,48 @@
     padding: 1rem;
     border-radius: var(--radius-md);
     border: 1px solid var(--error-border, rgba(239, 68, 68, 0.3));
+  }
+
+  /* Estilos para la vista de detalles */
+  .details-view {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 0.5rem 0;
+  }
+  .details-section h4 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .details-section p {
+    margin: 0;
+    line-height: 1.6;
+  }
+  .instructions-box {
+    background-color: var(--bg-subtle);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    border-left: 4px solid var(--accent);
+    white-space: pre-wrap;
+    font-family: inherit;
+    line-height: 1.6;
+  }
+  .details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+  .detail-item {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+  .detail-item strong {
+    color: var(--text-color);
+    margin-right: 0.25rem;
   }
 </style>

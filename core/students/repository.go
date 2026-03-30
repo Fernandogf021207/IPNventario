@@ -117,6 +117,54 @@ func (r *Repository) Update(id int64, s *models.Student) error {
 	return nil
 }
 
+// UpdateWithAccount actualiza los datos de un alumno y su cuenta de acceso.
+func (r *Repository) UpdateWithAccount(id int64, s *models.Student, username, password string) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return fmt.Errorf("error iniciando transacción: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Actualizar alumno
+	_, err = tx.Exec(`
+		UPDATE students
+		SET student_code = ?, full_name = ?, email = ?, group_name = ?
+		WHERE id = ?
+	`, s.StudentCode, s.FullName, s.Email, s.GroupName, id)
+	if err != nil {
+		return fmt.Errorf("error actualizando alumno: %w", err)
+	}
+
+	// Manejar cuenta de acceso
+	if username != "" {
+		if password != "" {
+			// Actualizar o crear con nueva contraseña
+			hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+			if err != nil {
+				return fmt.Errorf("error generando hash: %w", err)
+			}
+			_, err = tx.Exec(`
+				INSERT INTO student_accounts (student_id, username, password_hash)
+				VALUES (?, ?, ?)
+				ON CONFLICT(student_id) DO UPDATE SET username = EXCLUDED.username, password_hash = EXCLUDED.password_hash
+			`, id, username, string(hash))
+			if err != nil {
+				return fmt.Errorf("error actualizando cuenta de alumno: %w", err)
+			}
+		} else {
+			// Solo actualizar username si la cuenta existe
+			_, err = tx.Exec(`
+				UPDATE student_accounts SET username = ? WHERE student_id = ?
+			`, username, id)
+			if err != nil {
+				return fmt.Errorf("error actualizando username: %w", err)
+			}
+		}
+	}
+
+	return tx.Commit()
+}
+
 // Deactivate desactiva un alumno.
 func (r *Repository) Deactivate(id int64) error {
 	_, err := r.DB.Exec("UPDATE students SET is_active = 0 WHERE id = ?", id)

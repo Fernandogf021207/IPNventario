@@ -146,6 +146,19 @@ func (r *Repository) Close(id int64) error {
 	return nil
 }
 
+// Delete elimina una práctica (solo si está en draft).
+func (r *Repository) Delete(id int64) error {
+	result, err := r.DB.Exec("DELETE FROM assignments WHERE id = ? AND status = 'draft'", id)
+	if err != nil {
+		return fmt.Errorf("error eliminando práctica: %w", err)
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("práctica no encontrada o no está en borrador")
+	}
+	return nil
+}
+
 // --- Assignment Items (recursos sugeridos) ---
 
 // ListItems obtiene los recursos vinculados a una práctica.

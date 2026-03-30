@@ -1,0 +1,38 @@
+# Base de Datos
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Go
+bin/
+/ipnventario
+/ipnventario.exe
+vendor/
+*.exe
+*.test
+*.prof
+
+# Node (Frontend)
+Frontend/node_modules/
+Frontend/dist/
+Frontend/.svelte-kit/
+Frontend/build/
+Frontend/.env*
+!Frontend/.env.example
+
+# Uploads
+uploads/
+/uploads/*
+!/uploads/.gitkeep
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# OS
+Thumbs.db
+Desktop.ini

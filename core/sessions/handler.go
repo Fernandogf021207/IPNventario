@@ -31,6 +31,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireTeacher)
 			r.Post("/", h.HandleCreate)
+			r.Put("/{id}", h.HandleUpdate)
 			r.Put("/{id}/open", h.HandleOpen)
 			r.Put("/{id}/close", h.HandleClose)
 			r.Put("/{id}/cancel", h.HandleCancel)
@@ -142,6 +143,39 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 
 	created, _ := h.Repo.GetByID(id)
 	writeJSON(w, http.StatusCreated, models.APIResponse{Success: true, Message: "Sesión creada.", Data: created})
+}
+
+// HandleUpdate - PUT /api/sessions/{id}
+func (h *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, models.APIResponse{Success: false, Error: "ID inválido."})
+		return
+	}
+
+	var req CreateSessionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, models.APIResponse{Success: false, Error: "Cuerpo inválido."})
+		return
+	}
+
+	labSession := &models.LabSession{
+		AssignmentID:   req.AssignmentID,
+		Title:          req.Title,
+		GroupName:      req.GroupName,
+		ScheduledStart: req.ScheduledStart,
+		ScheduledEnd:   req.ScheduledEnd,
+	}
+	labSession.Notes.String = req.Notes
+	labSession.Notes.Valid = req.Notes != ""
+
+	if err := h.Repo.Update(id, labSession); err != nil {
+		writeJSON(w, http.StatusBadRequest, models.APIResponse{Success: false, Error: "Error actualizando sesión: " + err.Error()})
+		return
+	}
+
+	updated, _ := h.Repo.GetByID(id)
+	writeJSON(w, http.StatusOK, models.APIResponse{Success: true, Message: "Sesión actualizada.", Data: updated})
 }
 
 // HandleOpen - PUT /api/sessions/{id}/open

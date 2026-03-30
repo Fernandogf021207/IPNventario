@@ -101,6 +101,16 @@ func (r *Repository) Create(s *models.LabSession) (int64, error) {
 	return result.LastInsertId()
 }
 
+// Update actualiza los datos de una sesión.
+func (r *Repository) Update(id int64, s *models.LabSession) error {
+	_, err := r.DB.Exec(`
+		UPDATE lab_sessions
+		SET assignment_id = ?, title = ?, group_name = ?, scheduled_start = ?, scheduled_end = ?, notes = ?
+		WHERE id = ? AND status = 'planned'
+	`, s.AssignmentID, s.Title, s.GroupName, s.ScheduledStart, s.ScheduledEnd, s.Notes, id)
+	return err
+}
+
 // UpdateStatus cambia el estado de una sesión.
 func (r *Repository) UpdateStatus(id int64, newStatus string, allowedFrom []string) error {
 	query := `UPDATE lab_sessions SET status = ? WHERE id = ? AND status IN (`

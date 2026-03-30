@@ -146,8 +146,21 @@ func (h *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		student.Email = sql.NullString{String: req.Email, Valid: true}
 	}
 
-	if err := h.Repo.Update(id, student); err != nil {
-		writeJSON(w, http.StatusBadRequest, models.APIResponse{Success: false, Error: err.Error()})
+	var errUpdate error
+	// Si hay contraseña pero no enviaron username explícito, usar la boleta
+	usernameToUse := req.Username
+	if usernameToUse == "" && req.Password != "" {
+		usernameToUse = req.StudentCode
+	}
+
+	if usernameToUse != "" {
+		errUpdate = h.Repo.UpdateWithAccount(id, student, usernameToUse, req.Password)
+	} else {
+		errUpdate = h.Repo.Update(id, student)
+	}
+
+	if errUpdate != nil {
+		writeJSON(w, http.StatusBadRequest, models.APIResponse{Success: false, Error: errUpdate.Error()})
 		return
 	}
 

@@ -34,6 +34,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 			r.Put("/{id}", h.HandleUpdate)
 			r.Put("/{id}/publish", h.HandlePublish)
 			r.Put("/{id}/close", h.HandleClose)
+			r.Delete("/{id}", h.HandleDelete)
 			// Assignment items
 			r.Get("/{id}/items", h.HandleListItems)
 			r.Post("/{id}/items", h.HandleAddItem)
@@ -209,6 +210,22 @@ func (h *Handler) HandleClose(w http.ResponseWriter, r *http.Request) {
 
 	updated, _ := h.Repo.GetByID(id)
 	writeJSON(w, http.StatusOK, models.APIResponse{Success: true, Message: "Práctica cerrada.", Data: updated})
+}
+
+// HandleDelete - DELETE /api/assignments/{id}
+func (h *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, models.APIResponse{Success: false, Error: "ID inválido."})
+		return
+	}
+
+	if err := h.Repo.Delete(id); err != nil {
+		writeJSON(w, http.StatusBadRequest, models.APIResponse{Success: false, Error: err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, models.APIResponse{Success: true, Message: "Práctica eliminada."})
 }
 
 // HandleListItems - GET /api/assignments/{id}/items

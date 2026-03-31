@@ -14,9 +14,9 @@
   async function loadSessions() {
     loadingSessions = true;
     try {
-      // Sort by scheduled_at desc
+      // Sort by scheduled_start desc
       sessions = await sessionsApi.list();
-      sessions.sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+      sessions.sort((a, b) => new Date(b.scheduled_start).getTime() - new Date(a.scheduled_start).getTime());
     } catch (err: any) {
       error = err.message || 'Error al cargar sesiones';
     } finally {
@@ -95,7 +95,7 @@
         <option value={null}>-- Selecciona una sesión --</option>
         {#each sessions as s}
           <option value={s.id}>
-            {formatDate(s.scheduled_at)} - {s.group_name} 
+            {formatDate(s.scheduled_start)} - {s.group_name}
             ({s.status === 'open' ? 'En Curso' : s.status === 'closed' ? 'Finalizada' : s.status})
           </option>
         {/each}

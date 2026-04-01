@@ -44,7 +44,7 @@ export interface Category {
   created_at: string;
 }
 
-export type ItemType = 'consumable' | 'loan' | 'machine';
+export type ItemType = 'consumable' | 'tool' | 'machine';
 export type MaintenanceStatus = 'ok' | 'scheduled' | 'critical' | 'out_of_service';
 
 export interface Item {
@@ -52,15 +52,19 @@ export interface Item {
   sku: string;
   name: string;
   description: string;
-  type: ItemType;
+  item_type: ItemType;
+  type?: ItemType; // alias for backward compat
   category_id: number;
   category_name?: string;
   stock: number;
+  min_stock: number;
   unit: string;
   location: string;
   maintenance_status: MaintenanceStatus;
+  module_data?: string;
   is_active: boolean;
   created_at: string;
+  updated_at?: string;
 }
 
 export type AssignmentStatus = 'draft' | 'published' | 'closed';
@@ -125,18 +129,21 @@ export type RequestType = 'loan' | 'consumption';
 export interface ResourceRequest {
   id: number;
   session_id: number;
+  assignment_id?: number;
   student_id: number;
   student_name?: string;
+  student_code?: string;
   item_id: number;
   item_name?: string;
+  item_sku?: string;
   quantity: number;
-  type: RequestType;
+  request_type: RequestType;
+  type?: RequestType; // alias
   status: RequestStatus;
   notes: string;
-  approved_by?: number;
-  created_at: string;
-  approved_at?: string;
-  returned_at?: string;
+  requested_at: string;
+  resolved_at?: string;
+  resolved_by?: number;
 }
 
 export type UsageStatus = 'active' | 'completed' | 'interrupted';

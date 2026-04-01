@@ -6,16 +6,22 @@
   import Layout from './lib/components/Layout.svelte';
   import Login from './routes/Login.svelte';
 
-  // Placeholder components for Phase 2 implementation
+  // Phase 2 components
   import TeacherDashboard from './routes/teacher/Dashboard.svelte';
   import TeacherStudents from './routes/teacher/Students.svelte';
   import TeacherAssignments from './routes/teacher/Assignments.svelte';
   import TeacherSessions from './routes/teacher/Sessions.svelte';
   import TeacherAttendance from './routes/teacher/Attendance.svelte';
+  // Phase 3 components
+  import TeacherInventory from './routes/teacher/Inventory.svelte';
+  import TeacherRequests from './routes/teacher/Requests.svelte';
+  import TeacherEquipment from './routes/teacher/Equipment.svelte';
+  // Student components
   import StudentDashboard from './routes/student/Dashboard.svelte';
   import StudentAssignments from './routes/student/Assignments.svelte';
   import StudentSession from './routes/student/Session.svelte';
   import StudentAttendance from './routes/student/Attendance.svelte';
+  import StudentRequestResource from './routes/student/RequestResource.svelte';
 
   let isInitialized = false;
 
@@ -26,10 +32,14 @@
     '/teacher/assignments': TeacherAssignments,
     '/teacher/sessions': TeacherSessions,
     '/teacher/attendance': TeacherAttendance,
+    '/teacher/inventory': TeacherInventory,
+    '/teacher/requests': TeacherRequests,
+    '/teacher/equipment': TeacherEquipment,
     '/student/dashboard': StudentDashboard,
     '/student/assignments': StudentAssignments,
     '/student/session': StudentSession,
     '/student/attendance': StudentAttendance,
+    '/student/request-resource': StudentRequestResource,
     '*': Login, // Default fallback
   };
 

@@ -13,8 +13,10 @@ import (
 	"github.com/Fernandogf021207/IPNventario/core/attendance"
 	"github.com/Fernandogf021207/IPNventario/core/auth"
 	"github.com/Fernandogf021207/IPNventario/core/database"
+	"github.com/Fernandogf021207/IPNventario/core/inventory"
 	"github.com/Fernandogf021207/IPNventario/core/sessions"
 	"github.com/Fernandogf021207/IPNventario/core/students"
+	"github.com/Fernandogf021207/IPNventario/modules/heavylab"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -135,15 +137,18 @@ func mountAttendanceRoutes(r chi.Router, db *sql.DB) {
 }
 
 func mountInventoryRoutes(r chi.Router, db *sql.DB) {
-	// Fase 3: Se implementará en core/inventory/
+	h := inventory.NewHandler(db)
+	h.RegisterRoutes(r)
 }
 
 func mountRequestRoutes(r chi.Router, db *sql.DB) {
-	// Fase 3: Se implementará en core/inventory/requests.go
+	h := inventory.NewRequestHandler(db)
+	h.RegisterRoutes(r)
 }
 
 func mountEquipmentRoutes(r chi.Router, db *sql.DB) {
-	// Fase 3: Se implementará en modules/heavylab/equipment.go
+	h := heavylab.NewEquipmentHandler(db)
+	h.RegisterRoutes(r)
 }
 
 func mountManualRoutes(r chi.Router, db *sql.DB, uploadsDir string) {

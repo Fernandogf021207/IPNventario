@@ -88,8 +88,20 @@
     color: var(--text-h);
   }
 
+  .nav-divider {
+    height: 1px;
+    background-color: var(--border);
+    margin: 0.5rem 0.5rem;
+  }
 
-
+  .nav-section {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.25rem 1rem;
+  }
   .user-section {
     padding: 1rem;
     border-top: 1px solid var(--border);
@@ -201,11 +213,17 @@
         <a href="#/teacher/assignments" class="nav-link" on:click={() => isSidebarOpen = false}>Prácticas</a>
         <a href="#/teacher/sessions" class="nav-link" on:click={() => isSidebarOpen = false}>Sesiones</a>
         <a href="#/teacher/attendance" class="nav-link" on:click={() => isSidebarOpen = false}>Asistencia</a>
+        <div class="nav-divider"></div>
+        <span class="nav-section">Recursos</span>
+        <a href="#/teacher/inventory" class="nav-link" on:click={() => isSidebarOpen = false}>Inventario</a>
+        <a href="#/teacher/requests" class="nav-link" on:click={() => isSidebarOpen = false}>Solicitudes</a>
+        <a href="#/teacher/equipment" class="nav-link" on:click={() => isSidebarOpen = false}>Maquinaria</a>
       {:else if role === 'student'}
         <a href="#/student/dashboard" class="nav-link" on:click={() => isSidebarOpen = false}>Dashboard</a>
         <a href="#/student/assignments" class="nav-link" on:click={() => isSidebarOpen = false}>Mis Prácticas</a>
         <a href="#/student/session" class="nav-link" on:click={() => isSidebarOpen = false}>Sesión Actual</a>
         <a href="#/student/attendance" class="nav-link" on:click={() => isSidebarOpen = false}>Mi Asistencia</a>
+        <a href="#/student/request-resource" class="nav-link" on:click={() => isSidebarOpen = false}>Solicitar Recurso</a>
       {/if}
     </nav>
 

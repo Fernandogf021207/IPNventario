@@ -31,12 +31,13 @@ func (h *EquipmentHandler) RegisterRoutes(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireTeacher)
 			r.Post("/", h.HandleCreate)
-			r.Put("/{id}/end", h.HandleEnd)
+			r.Put("/{id}/close", h.HandleClose)
 		})
 	})
 }
 
 // HandleList - GET /api/equipment-usage
+// Soporta filtros: ?session_id=, ?item_id=, ?status=
 func (h *EquipmentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	session := auth.GetSession(r.Context())
 
@@ -71,6 +72,12 @@ func (h *EquipmentHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	if sessionFilter != "" {
 		query += " AND eu.session_id = ?"
 		args = append(args, sessionFilter)
+	}
+
+	itemFilter := r.URL.Query().Get("item_id")
+	if itemFilter != "" {
+		query += " AND eu.item_id = ?"
+		args = append(args, itemFilter)
 	}
 
 	query += " ORDER BY eu.started_at DESC"
@@ -126,15 +133,15 @@ func (h *EquipmentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Validaciones
+	// RB4: session_id, student_id y supervisor_id son requeridos
 	if body.SessionID == 0 || body.ItemID == 0 || body.StudentID == 0 {
 		writeJSON(w, http.StatusBadRequest, models.APIResponse{
-			Success: false, Error: "session_id, item_id y student_id son requeridos.",
+			Success: false, Error: "session_id, item_id y student_id son requeridos (RB4).",
 		})
 		return
 	}
 
-	// Verificar que la sesión esté abierta (RB4)
+	// Verificar que la sesión esté abierta
 	var sessionStatus string
 	err := h.DB.QueryRow("SELECT status FROM lab_sessions WHERE id = ?", body.SessionID).Scan(&sessionStatus)
 	if err != nil {
@@ -175,22 +182,23 @@ func (h *EquipmentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusBadRequest, models.APIResponse{
 			Success: false,
 			Error: fmt.Sprintf(
-				"La máquina no está disponible. Estado de mantenimiento: %s",
+				"La máquina no está disponible para uso. Estado de mantenimiento: %s. "+
+					"Contacte al responsable del laboratorio para más información.",
 				maintenanceStatus,
 			),
 		})
 		return
 	}
 
-	// Verificar que no haya un uso activo del mismo equipo
+	// Solo un uso activo por máquina por sesión
 	var activeCount int
 	h.DB.QueryRow(
-		"SELECT COUNT(*) FROM equipment_usage WHERE item_id = ? AND status = 'active'",
-		body.ItemID,
+		"SELECT COUNT(*) FROM equipment_usage WHERE item_id = ? AND session_id = ? AND status = 'active'",
+		body.ItemID, body.SessionID,
 	).Scan(&activeCount)
 	if activeCount > 0 {
 		writeJSON(w, http.StatusBadRequest, models.APIResponse{
-			Success: false, Error: "Esta máquina ya tiene un uso activo. Ciérralo primero.",
+			Success: false, Error: "Esta máquina ya tiene un uso activo en esta sesión. Ciérralo primero.",
 		})
 		return
 	}
@@ -205,7 +213,7 @@ func (h *EquipmentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Insertar registro de uso
+	// Insertar registro de uso — supervisor_id es el usuario autenticado (RB4)
 	result, err := h.DB.Exec(`
 		INSERT INTO equipment_usage (session_id, item_id, student_id, supervisor_id, notes)
 		VALUES (?, ?, ?, ?, ?)
@@ -224,8 +232,9 @@ func (h *EquipmentHandler) HandleCreate(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// HandleEnd - PUT /api/equipment-usage/{id}/end
-func (h *EquipmentHandler) HandleEnd(w http.ResponseWriter, r *http.Request) {
+// HandleClose - PUT /api/equipment-usage/{id}/close
+// Cierra un uso activo con status 'completed' o 'interrupted'.
+func (h *EquipmentHandler) HandleClose(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, models.APIResponse{Success: false, Error: "ID inválido."})
@@ -246,7 +255,7 @@ func (h *EquipmentHandler) HandleEnd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Leer body opcional para status alternativo (interrupted)
+	// Leer body para status y notas
 	var body struct {
 		Status string `json:"status"` // completed | interrupted
 		Notes  string `json:"notes"`

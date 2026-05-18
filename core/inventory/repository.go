@@ -22,7 +22,8 @@ func NewRepository(db *sql.DB) *Repository {
 // ========================================================================
 
 // ListItems obtiene los items con filtros opcionales.
-func (r *Repository) ListItems(itemType, categoryID, search string, activeOnly bool) ([]models.Item, error) {
+// available=true excluye items con maintenance_status 'critical' o 'out_of_service' (RB8).
+func (r *Repository) ListItems(itemType, categoryID, search string, activeOnly, availableOnly bool) ([]models.Item, error) {
 	query := `
 		SELECT i.id, i.sku, i.name, i.item_type, i.category_id, i.stock, i.min_stock,
 		       i.unit, i.maintenance_status, i.location, i.module_data, i.is_active,
@@ -36,6 +37,9 @@ func (r *Repository) ListItems(itemType, categoryID, search string, activeOnly b
 
 	if activeOnly {
 		query += " AND i.is_active = 1"
+	}
+	if availableOnly {
+		query += " AND i.maintenance_status NOT IN ('critical', 'out_of_service')"
 	}
 	if itemType != "" {
 		query += " AND i.item_type = ?"
@@ -234,6 +238,18 @@ func (r *Repository) ListCategories() ([]models.Category, error) {
 	return categories, nil
 }
 
+// GetCategoryByID obtiene una categoría por su ID.
+func (r *Repository) GetCategoryByID(id int64) (*models.Category, error) {
+	var c models.Category
+	err := r.DB.QueryRow(
+		"SELECT id, name, description, created_at FROM categories WHERE id = ?", id,
+	).Scan(&c.ID, &c.Name, &c.Description, &c.CreatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("categoría no encontrada: %w", err)
+	}
+	return &c, nil
+}
+
 // CreateCategory crea una nueva categoría.
 func (r *Repository) CreateCategory(name, description string) (int64, error) {
 	result, err := r.DB.Exec(
@@ -273,4 +289,42 @@ func (r *Repository) DeleteCategory(id int64) error {
 		return fmt.Errorf("categoría no encontrada")
 	}
 	return nil
+}
+
+// ========================================================================
+// TRANSACTIONS
+// ========================================================================
+
+// GetTransactionsByItemID obtiene el historial de transacciones de un item.
+func (r *Repository) GetTransactionsByItemID(itemID int64) ([]models.Transaction, error) {
+	rows, err := r.DB.Query(`
+		SELECT t.id, t.item_id, t.session_id, t.student_id, t.user_id,
+		       t.type, t.quantity, t.stock_after,
+		       t.reference_type, t.reference_id, t.notes, t.created_at,
+		       i.name AS item_name
+		FROM transactions t
+		JOIN items i ON i.id = t.item_id
+		WHERE t.item_id = ?
+		ORDER BY t.created_at DESC
+	`, itemID)
+	if err != nil {
+		return nil, fmt.Errorf("error listando transacciones: %w", err)
+	}
+	defer rows.Close()
+
+	var transactions []models.Transaction
+	for rows.Next() {
+		var t models.Transaction
+		err := rows.Scan(
+			&t.ID, &t.ItemID, &t.SessionID, &t.StudentID, &t.UserID,
+			&t.Type, &t.Quantity, &t.StockAfter,
+			&t.ReferenceType, &t.ReferenceID, &t.Notes, &t.CreatedAt,
+			&t.ItemName,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error escaneando transacción: %w", err)
+		}
+		transactions = append(transactions, t)
+	}
+	return transactions, nil
 }

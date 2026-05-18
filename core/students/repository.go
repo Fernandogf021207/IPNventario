@@ -217,7 +217,7 @@ func (r *Repository) CreateWithAccount(s *models.Student, username, password str
 
 // BulkImportResult contiene los resultados de una importación masiva.
 type BulkImportResult struct {
-	Created  int      `json:"created"`
+	Imported int      `json:"imported"`
 	Skipped  int      `json:"skipped"`
 	Errors   []string `json:"errors,omitempty"`
 }
@@ -267,7 +267,7 @@ func (r *Repository) BulkImport(rows []BulkImportRow) (*BulkImportResult, error)
 			result.Skipped++
 			continue
 		}
-		result.Created++
+		result.Imported++
 	}
 
 	if err := tx.Commit(); err != nil {

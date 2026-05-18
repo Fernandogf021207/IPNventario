@@ -28,6 +28,8 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		r.Get("/", h.HandleListItems)
 		r.Get("/{id}", h.HandleGetItem)
 		r.Get("/{id}/available", h.HandleCheckAvailable)
+		r.Get("/{id}/transactions", h.HandleGetTransactions)
+		r.Get("/{id}/last-usage", h.HandleGetLastUsage)
 
 		// Solo teacher/admin/operator
 		r.Group(func(r chi.Router) {
@@ -42,6 +44,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	// Categories
 	r.Route("/api/categories", func(r chi.Router) {
 		r.Get("/", h.HandleListCategories)
+		r.Get("/{id}", h.HandleGetCategory)
 
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireTeacher)
@@ -57,13 +60,15 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 // ========================================================================
 
 // HandleListItems - GET /api/items
+// Soporta ?type=tool|consumable|machine, ?available=true (RB8), ?category_id=, ?search=
 func (h *Handler) HandleListItems(w http.ResponseWriter, r *http.Request) {
 	itemType := r.URL.Query().Get("type")
 	categoryID := r.URL.Query().Get("category_id")
 	search := r.URL.Query().Get("search")
 	activeOnly := r.URL.Query().Get("active_only") != "false"
+	availableOnly := r.URL.Query().Get("available") == "true"
 
-	items, err := h.Repo.ListItems(itemType, categoryID, search, activeOnly)
+	items, err := h.Repo.ListItems(itemType, categoryID, search, activeOnly, availableOnly)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, models.APIResponse{
 			Success: false, Error: "Error listando items: " + err.Error(),
@@ -328,6 +333,23 @@ func (h *Handler) HandleListCategories(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, models.APIResponse{Success: true, Data: categories})
 }
 
+// HandleGetCategory - GET /api/categories/{id}
+func (h *Handler) HandleGetCategory(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, models.APIResponse{Success: false, Error: "ID inválido."})
+		return
+	}
+
+	category, err := h.Repo.GetCategoryByID(id)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, models.APIResponse{Success: false, Error: "Categoría no encontrada."})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, models.APIResponse{Success: true, Data: category})
+}
+
 // CategoryRequest es el cuerpo para crear/editar una categoría.
 type CategoryRequest struct {
 	Name        string `json:"name"`
@@ -398,6 +420,87 @@ func (h *Handler) HandleDeleteCategory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, models.APIResponse{Success: true, Message: "Categoría eliminada."})
+}
+
+// ========================================================================
+// TRANSACTION HISTORY
+// ========================================================================
+
+// HandleGetTransactions - GET /api/items/{id}/transactions
+func (h *Handler) HandleGetTransactions(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, models.APIResponse{Success: false, Error: "ID inválido."})
+		return
+	}
+
+	// Verificar que el item existe
+	_, err = h.Repo.GetItemByID(id)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, models.APIResponse{Success: false, Error: "Item no encontrado."})
+		return
+	}
+
+	transactions, err := h.Repo.GetTransactionsByItemID(id)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, models.APIResponse{
+			Success: false, Error: "Error obteniendo transacciones: " + err.Error(),
+		})
+		return
+	}
+
+	if transactions == nil {
+		transactions = []models.Transaction{}
+	}
+
+	writeJSON(w, http.StatusOK, models.APIResponse{Success: true, Data: transactions})
+}
+
+// ========================================================================
+// LAST USAGE (RF16)
+// ========================================================================
+
+// LastUsageView representa una fila de la vista v_last_equipment_usage.
+type LastUsageView struct {
+	ItemID      int64          `json:"item_id"`
+	ItemName    string         `json:"item_name"`
+	SKU         string         `json:"sku"`
+	StudentID   sql.NullInt64  `json:"student_id"`
+	StudentName sql.NullString `json:"student_name"`
+	StudentCode sql.NullString `json:"student_code"`
+	StartedAt   sql.NullString `json:"started_at"`
+	EndedAt     sql.NullString `json:"ended_at"`
+	SessionID   sql.NullInt64  `json:"session_id"`
+	UsageStatus sql.NullString `json:"usage_status"`
+}
+
+// HandleGetLastUsage - GET /api/items/{id}/last-usage
+// Usa la vista v_last_equipment_usage para trazabilidad (RF16).
+func (h *Handler) HandleGetLastUsage(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, models.APIResponse{Success: false, Error: "ID inválido."})
+		return
+	}
+
+	var v LastUsageView
+	err = h.Repo.DB.QueryRow(`
+		SELECT item_id, item_name, sku, student_id, student_name,
+		       student_code, started_at, ended_at, session_id, usage_status
+		FROM v_last_equipment_usage
+		WHERE item_id = ?
+	`, id).Scan(
+		&v.ItemID, &v.ItemName, &v.SKU, &v.StudentID, &v.StudentName,
+		&v.StudentCode, &v.StartedAt, &v.EndedAt, &v.SessionID, &v.UsageStatus,
+	)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, models.APIResponse{
+			Success: false, Error: "No se encontró registro de uso para este item.",
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, models.APIResponse{Success: true, Data: v})
 }
 
 // ========================================================================
